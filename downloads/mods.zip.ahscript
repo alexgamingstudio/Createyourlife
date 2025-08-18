@@ -1,1 +1,81 @@
+#======== MODS SYSTEM HEADER =========#
+@unit mods.registry
+@build 2.7-alpha
+@link storage://mods.zip
+@context CreateYourLife
 
+!define ROLE mod-manager
+!define POLICY strict-load
+!define FORMAT ahmod-v2
+
+#======== MOD DECLARATION =========#
+mod-pack "Essentials" {
+    version "1.0.0"
+    author "System"
+    contains [
+        "homewarp",
+        "chatfilter",
+        "autobackup"
+    ]
+}
+
+mod-pack "AdventurePlus" {
+    version "2.3.1"
+    author "Community"
+    contains [
+        "treasurehunt",
+        "bossraid",
+        "questbook"
+    ]
+}
+
+#======== LOADING RULES =========#
+load-order {
+    priority "Essentials" > "AdventurePlus"
+    fallback  disabled:unknown
+    reject    corrupted:entries
+}
+
+#======== EVENT HANDLERS =========#
+on load(mod) => {
+    emit status "activating:" + mod.name
+    verify mod.integrity
+    if mod.failed {
+        quarantine mod
+        emit warn "mod quarantined:" + mod.name
+    }
+    else {
+        enable mod
+        emit ok "mod enabled:" + mod.name
+    }
+}
+
+on unload(mod) => {
+    emit status "shuttingdown:" + mod.name
+    disable mod
+}
+
+#======== SCHEDULED TASKS =========#
+schedule {
+    every 500ticks => {
+        scan mods for integrity
+        logmods "periodic.check"
+    }
+
+    every 2000ticks => {
+        purge quarantined olderthan(10000ticks)
+    }
+}
+
+#======== MOCK MOD STATES =========#
+state {
+    "homewarp"      -> enabled
+    "chatfilter"    -> enabled
+    "autobackup"    -> enabled
+    "treasurehunt"  -> enabled
+    "bossraid"      -> disabled (missing assets)
+    "questbook"     -> enabled
+}
+
+#======== END OF FILE =========#
+@seal mods
